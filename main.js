@@ -117,7 +117,7 @@ function getTokenBySquare(text,pos){//获得[]括起来的内容作为可选参�
   return [token,pos]
 }
 
-const tagOrLabelRegex = /(\\tag)|(\\Label)/g
+const tagOrLabelRegex = /(\\tag)|(\\Label)[\s]*/g
 
 function splitTexByTagAndLabel(text){//根据text中\tag和\Label的位置获取列表。需要预先删除text中的定义语句。
   const tagsOrLabels = text.matchAll(tagOrLabelRegex);
@@ -448,7 +448,7 @@ function removeRefOrLabelText(text){//删除\Ref和\Label的定义语句
   return text;
 }
 
-const refRegex = /\\Ref/g
+const refRegex = /\\Ref[\s]*/g
 
 function reRefText(text,labelMap,numberMap){
   const iflog = false;
