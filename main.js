@@ -24,15 +24,16 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var obsidian = require('obsidian');
 
 function getActiveMarkdownFile(app) {
+  const iflog = false;
   var activeMarkdownFile = app.workspace.getActiveFile();
   // console.log('activeMarkdownFile:',activeMarkdownFile);
   var activeMarkdownFileName = activeMarkdownFile.path;
   // console.log('activeMarkdownFile.path:',activeMarkdownFile.path);
-  const basePath = activeMarkdownFile.vault.adapter.basePath;
+  // const basePath = activeMarkdownFile.vault.adapter.basePath;
   // console.log('activeMarkdownFile.vault.adapter.basePath:',activeMarkdownFile.vault.adapter.basePath);
   // activeMarkdownFile = abstractFileToMarkdownTFile(activeMarkdownFile);
-  var path = require('path');
-  activeMarkdownFile = path.join(basePath,activeMarkdownFileName);
+  // var path = require('path');
+  // activeMarkdownFile = path.join(basePath,activeMarkdownFileName);
   // console.log("joined path:",activeMarkdownFile);
 
   if (!activeMarkdownFile) {
@@ -40,10 +41,12 @@ function getActiveMarkdownFile(app) {
       return null;
   }
   activeMarkdownFileName = this.app.vault.getAbstractFileByPath(activeMarkdownFileName);
-  return [activeMarkdownFile,activeMarkdownFileName];
+  ifLog(iflog)("ActiveMarkdownFile:",activeMarkdownFile,";ActiveMarkdownFileName:",activeMarkdownFileName)
+  // return [activeMarkdownFile,activeMarkdownFileName];
+  return activeMarkdownFile
 }
 
-function ifLog(condition){
+function ifLog(condition){//log information by condition
   if(condition){
     return console.log
   }
@@ -152,8 +155,10 @@ function splitTexByTagAndLabel(text){//根据text中\tag和\Label的位置获取
 }
 
 function readFile(activeFile){//读取文件获得文本
-  var fs = require("fs");
-  const filecontent = fs.readFileSync(activeFile,"utf-8");
+  const iflog = false;
+  // var fs = require("fs");
+  // const filecontent = fs.readFileSync(activeFile,"utf-8");
+  const filecontent = this.app.vault.read(activeFile)
   return filecontent
 }
 
@@ -528,31 +533,33 @@ var AutoTagAndRefPlugin = class extends import_obsidian.Plugin {
       name: "Refresh Tags and References",
       callback: () => {
         try{
-          // console.log("Formula Auot Refreshing...");
-          var [activeFile,activeFileName] = getActiveMarkdownFile(this.app);
-          // console.log("activeFile:",activeFile);
-          var filecontent = readFile(activeFile);
-          filecontent = removeRefOrLabelText(filecontent);
-          var [filecontentlist,postcontent] = splitTexByTagAndLabel(filecontent);
-          // console.log("filecontentlist:",filecontentlist);
-          const formats = new Formats(filecontentlist);
-          // console.log(formats)
-          var freshedFileContent = formats.freshFileContentList();
+          const iflog = true;
+          ifLog(iflog)("Formula Auot Refreshing...");
+          var activeFile = getActiveMarkdownFile(this.app);
+          ifLog(iflog)("activeFile:",activeFile);
+          var filecontentPromise = readFile(activeFile);
+          filecontentPromise.then(filecontentText=>{
+            var filecontent = removeRefOrLabelText(filecontentText);
+            ifLog(iflog)("Filecontent read.")
+            var [filecontentlist,postcontent] = splitTexByTagAndLabel(filecontent);
+            ifLog(iflog)("Filecontent split.")
 
-          freshedFileContent += postcontent;
-
-          const [labelMap,numberMap] = setRefRule(formats.list);
-          // console.log("refRuleMap",refRuleMap)
-
-          freshedFileContent = reRefText(freshedFileContent,labelMap,numberMap)
-
-          freshedFileContent = addRefAndLabelDef(freshedFileContent);
-          // console.log("file content after add ref:",freshedFileContent);
-
+            const formats = new Formats(filecontentlist);
+            ifLog(iflog)("formats constructed.")
+            var freshedFileContent = formats.freshFileContentList();
+            freshedFileContent += postcontent;
+            ifLog(iflog)("postcontent added to freshedFileContent.")
+            const [labelMap,numberMap] = setRefRule(formats.list);
+            ifLog(iflog)("labelMap:",labelMap,"numberMap",numberMap)
+            freshedFileContent = reRefText(freshedFileContent,labelMap,numberMap)
+            freshedFileContent = addRefAndLabelDef(freshedFileContent);
+            ifLog(iflog)("Filecontent freshed.");
+            this.app.vault.modify(activeFile,freshedFileContent)
+            ifLog(iflog)("File modified.")
+            new Notice("Auto-Tag & Ref: Done.")
+          });
           // console.log("activeFille",activeFile);
           // console.log("fresed file content:",freshedFileContentList);
-          this.app.vault.modify(activeFileName,freshedFileContent)
-          new Notice("Auto-Tag & Ref: Done.")
         }catch(err){
           const message = "AutoTagAndRef Error:\n"+err.message;
           new Notice(message)
