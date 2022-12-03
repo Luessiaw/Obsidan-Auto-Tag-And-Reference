@@ -80,9 +80,11 @@ This plugin has been tested on windows 11. It cannot work on mobile devices now,
 
 * Add more new commands for convenience. Such as \\LabelN for pattern 1, \\Labela for pattern a, etc.
 * Support costumise test in \\Label. For example, you may want to show equation's name in tag like this,
+
 $$
 a^2+b^2=c^2.\tag{1a, the Pythagorean theorem}
 $$
+
 * Support mobile devices.
 * Optimize the code. I'm far from a JavaScript expert.
 * Support [Extended MathJax](https://github.com/xldenis/obsidian-latex) plugin so that you can just put the defination statement of \\Label and \\Ref in the preamble file rather than every markdown file.
