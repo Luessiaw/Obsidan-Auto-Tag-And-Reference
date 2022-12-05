@@ -21,7 +21,6 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-var obsidian = require('obsidian');
 
 function getActiveMarkdownFile(app) {
   const iflog = false;
@@ -122,7 +121,7 @@ function getTokenBySquare(text,pos){//获得[]括起来的内容作为可选参�
 
 const tagOrLabelRegex = /(\\tag)|(\\Label)[\s]*/g
 
-function splitTexByTagAndLabel(text){//根据text中\tag和\Label的位置获取列表。需要预先删除text中的定义语句。
+function splitTextByTagAndLabel(text){//根据text中\tag和\Label的位置获取列表。需要预先删除text中的定义语句。
   const tagsOrLabels = text.matchAll(tagOrLabelRegex);
   var start = 0;
   const textList = [];
@@ -131,21 +130,26 @@ function splitTexByTagAndLabel(text){//根据text中\tag和\Label的位置获取
     var pos = tagOrLabel.index + regexTex.length;
     var optionalArg = "";
     var arg = "";
+    var totalArg
     if (regexTex=="\\tag"){//假如是\tag命令，只需要捕获一个token
-      [arg,pos] = getTokenByCurl(text,pos)
+      [optionalArg,pos] = getTokenByCurl(text,pos)
+      totalArg = optionalArg+arg;
+      optionalArg = removeSpaceAndCurl(optionalArg)//虽然是optional,对于tag是{}括起来的
     }else{
       [optionalArg,pos] = getTokenBySquare(text,pos);
       [arg,pos] = getTokenByCurl(text,pos);
+      totalArg = optionalArg+arg;
+      optionalArg = removeSpaceAndSquareBracket(optionalArg)//虽然是optional,对于tag是{}括起来的
+      arg = removeSpaceAndCurl(arg)
     }
-    const totalArg = optionalArg + arg;
     // console.log("split,optionalArg=",optionalArg)
     const textSlice = {
       text:text.slice(start,pos),
       regexTex:regexTex + totalArg,
-      optionalArg:removeSpaceAndSquareBracket(optionalArg),
-      arg:removeSpaceAndCurl(arg),
+      optionalArg:optionalArg,
+      arg:arg,
       argChangedTo:"",
-      format:getFormat(arg)
+      format:getFormat(optionalArg)
     }
     textList.push(textSlice);
     start = pos;
@@ -179,8 +183,11 @@ function removeSpaceAndSquareBracket(string){//删除两端的空白字符或方
 }
 
 function getFormat(string){
-  string = removeSpaceAndCurl(string);
+  const iflog = false;
+  ifLog(iflog)("Format string:",string)
+  // string = removeSpaceAndSquareBracket(string);
   if (!string){ // 如果字符串为空,则默认格式为数字
+    ifLog(iflog)("string is empty.")
     return ["1"];
   }
 
@@ -207,6 +214,7 @@ function getFormat(string){
   else{ //不含数字和字母,则格式为第一个字符乘以n次
     var format = string.slice(0,1);
   };
+  ifLog(iflog)("format:",format)
   return format;
 }
 
@@ -405,7 +413,7 @@ class Formats{ // 自定义类。我不知道如何自定义 Set 的比较函数
       list.argChangedTo = this.tag2Text(tag);
       // formerTag = tag;
       // console.log(list.optionalArg);
-      const regexTextChangedTo = "\\Label["+list.optionalArg+"]{"+list.argChangedTo+"}"
+      const regexTextChangedTo = "\\Label["+list.argChangedTo+"]{"+list.arg+"}"
       list.text = list.text.replace(list.regexTex,regexTextChangedTo)
       // console.log("list changed to",list);
       freshedfilecontent += list.text;
@@ -424,18 +432,19 @@ function setRefRule(filecontentlist){//用于更新reference
     const arg = list.arg;
     const optionalArg = list.optionalArg;
     const argChangedTo = list.argChangedTo;
-    if (arg){
-      numberMap.set(arg,argChangedTo)
+    if (optionalArg){
+      numberMap.set(optionalArg,argChangedTo)
     }
-    if (optionalArg){//\Label[]里的标签也映射为
-      labelMap.set(optionalArg,argChangedTo)
+    if (arg){
+      labelMap.set(arg,argChangedTo)
     }
   }
   return [labelMap,numberMap];
 }
 
-const defLabelText = "$\\newcommand\\Label[2][]{\\tag{#2}}$\n";
-const defRefText = "$\\newcommand\\Ref[2][]{(\\mbox{#2})}$\n";
+const defLabelText = "$\\newcommand\\Label[2][1]{\\tag{#1}}$\n";
+const defRefText = "$\\newcommand\\Ref[2][1]{(\\mbox{#1})}$\n";
+const defText = defLabelText + defRefText;
 
 function addRefAndLabelDef(text){//添加\Ref和\Label命令
   for(let defText of [defLabelText,defRefText]){
@@ -476,12 +485,12 @@ function reRefText(text,labelMap,numberMap){
     ifLog(iflog)("bracket removed. Optional=",optionalArg," arg=",arg)
     var textSlice = text.slice(start,pos);
     var refChangedTo = "";
-    if(optionalArg&&labelMap.has(optionalArg)){//如果设置了标签，就以标签的引用为准
+    if(arg&&labelMap.has(arg)){//如果设置了标签，就以标签的引用为准
       ifLog(iflog)("use label to change tag")
-      refChangedTo = "\\Ref["+optionalArg+"]{"+labelMap.get(optionalArg)+"}"
-    }else if (arg&&numberMap.has(arg)){
+      refChangedTo = "\\Ref["+labelMap.get(arg)+"]{"+arg+"}"
+    }else if (optionalArg&&numberMap.has(optionalArg)){
       ifLog(iflog)("use number to change tag")
-      refChangedTo = "\\Ref["+optionalArg+"]{"+numberMap.get(arg)+"}"
+      refChangedTo = "\\Ref["+numberMap.get(optionalArg)+"]{"+arg+"}"
     }else{
       ifLog(iflog)("tag not changed.")
       refChangedTo = totalRegex;
@@ -498,18 +507,6 @@ function reRefText(text,labelMap,numberMap){
   return finalText
 }
 
-// async function renumbering(filecontentlist) { //分割完毕后重新编号
-//   var setOfFormats = new SetOfFormats();
-//   let list = await filecontentlist
-//   for (singleText of list){
-//     // console.log(singleText.format);
-//     setOfFormats.add(singleText.format);
-//   }
-//   // console.log(setOfFormats);
-
-// }
-
-
 // main.ts
 var main_exports = {};
 __export(main_exports, {
@@ -518,30 +515,41 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
-  mySetting: "default"
+  ifUseExtendedMathJax: false
 };
+
+const app = this.app;
+const vault = app.vault;
+const basePath = vault.adapter.basePath;
+
 var AutoTagAndRefPlugin = class extends import_obsidian.Plugin {
   async onload() {
-    console.log("loading plugin");
+    console.log("loading auto-tag & ref plugin");
     await this.loadSettings();
     // const ribbonIconEl = this.addRibbonIcon("dice", "Sample Plugin", (evt) => {
     //   new Notice("HELLO!");
     // });
     // ribbonIconEl.addClass("my-plugin-ribbon-class");
+    // this.settings.ifUseExtendedMathJax = false;
+    
     this.addCommand({
       id: "refresh-tags&refs",
       name: "Refresh Tags and References",
       callback: () => {
         try{
-          const iflog = true;
+          const iflog = false;
           ifLog(iflog)("Formula Auot Refreshing...");
           var activeFile = getActiveMarkdownFile(this.app);
           ifLog(iflog)("activeFile:",activeFile);
           var filecontentPromise = readFile(activeFile);
-          filecontentPromise.then(filecontentText=>{
-            var filecontent = removeRefOrLabelText(filecontentText);
+          filecontentPromise.then(filecontent=>{
+            if (!this.settings.ifUseExtendedMathJax){//添加定义语句
+              ifLog(iflog)("No Extened MathJax.")
+              filecontent = removeRefOrLabelText(filecontent);
+              ifLog(iflog)("Defination statements removed.")
+            }
             ifLog(iflog)("Filecontent read.")
-            var [filecontentlist,postcontent] = splitTexByTagAndLabel(filecontent);
+            var [filecontentlist,postcontent] = splitTextByTagAndLabel(filecontent);
             ifLog(iflog)("Filecontent split.")
 
             const formats = new Formats(filecontentlist);
@@ -552,7 +560,10 @@ var AutoTagAndRefPlugin = class extends import_obsidian.Plugin {
             const [labelMap,numberMap] = setRefRule(formats.list);
             ifLog(iflog)("labelMap:",labelMap,"numberMap",numberMap)
             freshedFileContent = reRefText(freshedFileContent,labelMap,numberMap)
-            freshedFileContent = addRefAndLabelDef(freshedFileContent);
+            if (!this.settings.ifUseExtendedMathJax){//添加定义语句
+              ifLog(iflog)("No Extened MathJax.")
+              freshedFileContent = addRefAndLabelDef(freshedFileContent);
+            }
             ifLog(iflog)("Filecontent freshed.");
             this.app.vault.modify(activeFile,freshedFileContent)
             ifLog(iflog)("File modified.")
@@ -567,14 +578,14 @@ var AutoTagAndRefPlugin = class extends import_obsidian.Plugin {
       }
     });
 
-    // this.addSettingTab(new SampleSettingTab(this.app, this));
+    this.addSettingTab(new SettingTab(this.app, this));
     // this.registerDomEvent(document, "click", (evt) => {
     //   console.log("click", evt);
     // });
     // this.registerInterval(window.setInterval(() => console.log("setInterval"), 5 * 60 * 1e3));
   }
   onunload() {
-    console.log("unloading plugin");
+    console.log("unloading auto-tag & ref plugin");
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -583,6 +594,7 @@ var AutoTagAndRefPlugin = class extends import_obsidian.Plugin {
     await this.saveData(this.settings);
   }
 };
+
 var SampleModal = class extends import_obsidian.Modal {
   constructor(app) {
     super(app);
@@ -596,7 +608,8 @@ var SampleModal = class extends import_obsidian.Modal {
     contentEl.empty();
   }
 };
-var SampleSettingTab = class extends import_obsidian.PluginSettingTab {
+
+var SettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -604,12 +617,73 @@ var SampleSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Settings for my awesome plugin." });
-    new import_obsidian.Setting(containerEl).setName("Setting #1").setDesc("It's a secret").addText((text) => text.setPlaceholder("Enter your secret").setValue(this.plugin.settings.mySetting).onChange(async (value) => {
-      console.log("Secret: " + value);
-      this.plugin.settings.mySetting = value;
-      await this.plugin.saveSettings();
-    }));
+    containerEl.createEl("h2", { text: "Settings for Auto-Tag & Ref." });
+    this.addifUseExtendedMathJaxSetting(containerEl)
+  }
+  addifUseExtendedMathJaxSetting(containerEl){
+    const desc = document.createDocumentFragment();
+    desc.append("If you've installed and activeted Extended MathJax plugin, ",
+        "you can turn on this option. ",
+        // desc.createEl("br"),
+        "to avoid the defination statements to be added in your markdown file. ",
+        "Please click right button to ",
+        desc.createEl("b", {
+          text: "copy defination statements"
+        }),
+        " to clipboard, and ",
+        desc.createEl("b", {
+          text: "add them in the preamble.sty file. "
+        }),
+        // desc.createEl("br"),
+        // "so that they won't be added in your markdown file. "
+        // desc.createEl("br"),
+    )
+    const extendendMathJax = app.plugins.plugins["obsidian-latex"]
+    this.plugin.settings.ifUseExtendedMathJax = this.plugin.settings.ifUseExtendedMathJax && extendendMathJax
+    this.plugin.saveSettings()
+    new import_obsidian.Setting(containerEl)
+      .setName("Use plugin Extended MathJax")
+      .setDesc(desc)
+      .addToggle(toggle=>{
+        // if(){
+        // }
+        toggle
+        // .setTooltip("Use plugin Extended")
+        .setValue(this.plugin.settings.ifUseExtendedMathJax)
+        .onChange(async (value)=>{
+          if (value==this.plugin.settings.ifUseExtendedMathJax){
+            // 加这个判断以避免死循环
+          }else{
+            if (value){
+              if (app.plugins.plugins["obsidian-latex"]){
+                this.plugin.settings.ifUseExtendedMathJax = value;
+              }else{
+                new Notice("Extended MathJax is not installed or activated!")
+                this.plugin.settings.ifUseExtendedMathJax = false;
+                toggle.setValue(false)
+              }
+            }else{
+              this.plugin.settings.ifUseExtendedMathJax = value;
+            }
+            // ifLog(true)("ifUseExtendedMathJax=",this.plugin.settings.ifUseExtendedMathJax)
+            this.plugin.saveSettings()
+            }
+        })
+      })
+      .addButton((cb)=>{
+        cb.setButtonText("Copy")
+          .setTooltip("Copy defination statements to clipboard.")
+          .setCta().onClick(()=>{
+            navigator.clipboard.writeText(defText);
+            new Notice("Defination statements copied.")
+          })
+      });
+  }
+  addCopyStatementButtionSetting(containerEl){
+    const setting = new import_obsidian.Setting(containerEl)
+      .setName("Defination statements")
+      .setDesc("Click button on the right to copy defination statements to clipboard.")
+      .addTextArea()
   }
 };
 
