@@ -1,4 +1,4 @@
-# Obsidian Auto Tag and Reference Plugin
+# Obsidian Auto Tag and Reference Plugin v`1.0.0`
 
 This is a plugin for equation numbering and reference. It doesn't behave like latex. It's just a compromise. 
 
