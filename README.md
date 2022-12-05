@@ -6,7 +6,9 @@ In latex, we use \\label command to mark an equation and \\eqref command to get 
 
 ## download
 
-Go to [release page](https://github.com/Luessiaw/obsidian-equationAutoTagAndReference/releases/tag/1.0.0), download "main.js", "manifest.json" and "style.css", put them in your vault/.obsidian/plugins/obsidian-formulaAutoTagAndReference. The turn on the plugin in Obsidian.
+Go to [release page](https://github.com/Luessiaw/obsidian-equationAutoTagAndReference/releases/tag/1.0.0), download "main.js", "manifest.json" and "style.css" from `1.0.0` tag, put them in your vault/.obsidian/plugins/obsidian-formulaAutoTagAndReference. The turn on the plugin in Obsidian.
+
+`2.0.0` version has been pre-released. The usage of `2.0.0` version is different from `1.0.0`, see [readme.md for 2.0.0](https://github.com/Luessiaw/Obsidan-Auto-Tag-And-Reference/tree/v2.0.0).
 
 ## usage
 
