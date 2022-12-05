@@ -14,7 +14,7 @@ Go to [release page](https://github.com/Luessiaw/obsidian-equationAutoTagAndRefe
 
 There is currently only one command. Type `ctrl+P` to active Command Palette, then search for `auto-Tag & Ref: Refresh Tags and References`, click on it or press enter. 
 
-![sample gif](sample_vedio.mp4)
+![sample gif](samplegif.gif)
 
 You may first notice that the following two lines are added in front of the file (Of cource they won't be added repeatedly):
 
