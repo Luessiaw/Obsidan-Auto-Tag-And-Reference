@@ -34,6 +34,7 @@ You should do the followings steps:
 2. Press `Ctrl+,` to open the Setting Paltte. 
 3. Turn on `Use Plugin Extended MathJax` option.
 4. Click on the `copy` button to copy the defination statements into your clipboard, and paste them in the `preamble.sty` file.
+5. Restart Extended MathJax plugin to reload the preamble file.
 
 ## the `\Label` command
 
