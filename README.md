@@ -94,8 +94,10 @@ This plugin has been tested on windows 11. It cannot work on mobile devices due 
 
 * Add an interface, like auto-completioin function in vscode.
 * Support costumise text in `\Label`. For example, you may want to show equation's name in tag like this,
+
 $$
 a^2+b^2=c^2.\tag{1a, the Pythagorean theorem}
 $$
+
 * Optimize the code. I'm far from a JavaScript expert.
 * Upload this plugin to the community. I've pull the `1.00` release to obsidian team, waiting for review. 
